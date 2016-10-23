@@ -6,6 +6,7 @@
  */
 exports.isStar = true;
 var MILLISECINMIN = 60000;
+var MILLISECINHOUR = MILLISECINMIN * 60;
 var FINISHTIME;
 
 var daysInEng = {
@@ -25,11 +26,13 @@ var daysFromNum = {
     3: 'СР'
 };
 function toTimestamp(str) {
-    var newStr = daysInEng[str.slice(0, 2)] + ' Aug 0' + daysInNum[str.slice(0, 2)] +
-        str.slice(2, 8) + ':00 +0' + str.slice(-1) + '00 2016';
-    var date = new Date(newStr);
+    var region = parseInt(str.slice(-2));
+    var hours = parseInt(str.slice(2, 5));
+    var minutes = parseInt(str.slice(6, 8));
+    var day = daysInNum[str.slice(0, 2)];
+    var date = Date.UTC(2016, 7, day, hours, minutes) - region * MILLISECINHOUR;
 
-    return date.valueOf();
+    return date;
 }
 
 function makeListForAll(schedule) {
@@ -52,19 +55,8 @@ function addBankHours(timeList, bankRegion, bankDays) {
     for (var i = 1; i <= bankDays.length; i++) {
         var start;
         var end;
-        if (bankRegion > 9) {
-            start = new Date(daysInEng[daysFromNum[i]] + ' Aug 0' + i +
-                ' 00:00:00 +' + bankRegion + '00 2016').valueOf();
-
-            // часовой пояс > 9
-            end = new Date(daysInEng[daysFromNum[i]] + ' Aug 0' + i +
-                ' 23:59:59 +' + bankRegion + '00 2016').valueOf();
-        } else {
-            start = new Date(daysInEng[daysFromNum[i]] + ' Aug 0' + i +
-                ' 00:00:00 +0' + bankRegion + '00 2016').valueOf();
-            end = new Date(daysInEng[daysFromNum[i]] + ' Aug 0' + i +
-                ' 23:59:59 +0' + bankRegion + '00 2016').valueOf();
-        }
+        start = Date.UTC(2016, 7, i, 0, 0) - bankRegion * MILLISECINHOUR;
+        end = Date.UTC(2016, 7, i, 23, 59) - bankRegion * MILLISECINHOUR;
         timeList.push({ 'from': start, 'to': bankDays[i - 1].from });
         timeList.push({ 'from': bankDays[i - 1].to, 'to': end });
     }
@@ -73,7 +65,7 @@ function addBankHours(timeList, bankRegion, bankDays) {
 }
 
 function sortTimeList(timeList) {
-    timeList.sort(function (fst, scnd) {
+    return timeList.sort(function (fst, scnd) {
         if (fst.from > scnd.from) {
 
             return 1;
@@ -84,8 +76,6 @@ function sortTimeList(timeList) {
 
         return -1;
     });
-
-    return timeList;
 }
 
 
@@ -93,8 +83,9 @@ function makeBankDays(workingHours) {
     var bankDays = [];
     var days = Object.keys(daysInEng);
     for (var i = 0; i < days.length; i++) {
-        bankDays.push({ 'from': toTimestamp(days[i] + ' ' + workingHours.from),
-            'to': toTimestamp(days[i] + ' ' + workingHours.to) });
+        var from = toTimestamp(days[i] + ' ' + workingHours.from);
+        var to = toTimestamp(days[i] + ' ' + workingHours.to);
+        bankDays.push({ 'from': from, 'to': to });
     }
 
     return bankDays;
@@ -137,21 +128,9 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
     var bankDays = makeBankDays(workingHours);
     timeList = addBankHours(timeList, bankRegion, bankDays);
     timeList = sortTimeList(timeList);
-
-    var startTime;
-    if (bankRegion < 9) {
-        startTime = new Date('Mon Aug 01 2016 00:00:00 GMT+0' + bankRegion.toString() +
-            '00').valueOf();
-        FINISHTIME = new Date('Wed Aug 03 2016 23:59:59 GMT+0' + bankRegion.toString() +
-            '00').valueOf();
-    } else {
-        startTime = new Date('Mon Aug 01 2016 00:00:00 GMT+' + bankRegion.toString() +
-            '00').valueOf();
-        FINISHTIME = new Date('Wed Aug 03 2016 23:59:59 GMT+' + bankRegion.toString() +
-            '00').valueOf();
-    }
+    var startTime = Date.UTC(2016, 7, 1, 0, 0) - bankRegion * MILLISECINHOUR;
+    FINISHTIME = Date.UTC(2016, 7, 3, 23, 59) - bankRegion * MILLISECINHOUR;
     // должен быть часовой пояс банка
-
     var start = chooseIntervals(startTime, duration, timeList);
 
     return {
@@ -175,12 +154,11 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
          * @returns {String}
          */
         format: function (template) {
-            var date = new Date(this.timeForDeal);
-            var finalDate = parseInt(this.timeForDeal) +
-                (bankRegion + date.getTimezoneOffset() / 60) * MILLISECINMIN;
-            date = new Date(finalDate);
-            var hours = date.getHours().toString();
-            var minutes = date.getMinutes().toString();
+            var finalDate = parseInt(this.timeForDeal) + (bankRegion) * MILLISECINHOUR;
+
+            var date = new Date(finalDate);
+            var hours = date.getUTCHours().toString();
+            var minutes = date.getUTCMinutes().toString();
             if (hours.length !== 2) {
                 hours = '0' + hours;
             }
@@ -189,7 +167,8 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
             }
             if (this.timeForDeal !== null) {
 
-                return template.replace('%HH', hours)
+                return template
+                    .replace('%HH', hours)
                     .replace('%MM', minutes)
                     .replace('%DD', daysFromNum[date.getDate()]);
             }
@@ -207,6 +186,7 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
             start = chooseIntervals((this.timeForDeal + 30 * MILLISECINMIN),
                 duration, timeList);
             if (start === null) {
+
                 return false;
             }
             this.timeForDeal = start;
