@@ -170,7 +170,7 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
                 return template
                     .replace('%HH', hours)
                     .replace('%MM', minutes)
-                    .replace('%DD', daysFromNum[date.getDate()]);
+                    .replace('%DD', daysFromNum[date.getUTCDate()]);
             }
 
             return '';
