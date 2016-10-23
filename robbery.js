@@ -4,7 +4,7 @@
  * Сделано задание на звездочку
  * Реализовано оба метода и tryLater
  */
-exports.isStar = false;
+exports.isStar = true;
 var MILLISECINMIN = 60000;
 var MILLISECINHOUR = MILLISECINMIN * 60;
 var FINISHTIME;
@@ -132,6 +132,10 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
     return {
 
         timeForDeal: start,
+        timeList: timeList,
+        duration: duration,
+        finish: FINISHTIME,
+
 
         /**
          * Найдено ли время
@@ -178,13 +182,16 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
          * @returns {Boolean}
          */
         tryLater: function () {
-            start = chooseIntervals((this.timeForDeal + 30 * MILLISECINMIN),
-                duration, timeList);
-            if (start === null) {
-
+            if (!this.exists()) {
                 return false;
             }
-            this.timeForDeal = start;
+            this.finish = Date.UTC(2016, 7, 3, 23, 59) - bankRegion * MILLISECINHOUR;
+            var start2 = chooseIntervals((this.timeForDeal + 30 * MILLISECINMIN),
+                this.duration, this.timeList);
+            if (!start2) {
+                return false;
+            }
+            this.timeForDeal = start2;
 
             return true;
         }
