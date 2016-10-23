@@ -9,15 +9,15 @@ var MILLISECINMIN = 60000;
 var MILLISECINHOUR = MILLISECINMIN * 60;
 var FINISHTIME;
 
-var daysInEng = {
-    'ПН': 'Mon',
-    'ВТ': 'Tue',
-    'СР': 'Wed'
-};
+var days = ['ПН', 'ВТ', 'СР'];
 var daysInNum = {
     'ПН': 1,
     'ВТ': 2,
-    'СР': 3
+    'СР': 3,
+    'ЧТ': 4,
+    'ПТ': 5,
+    'СБ': 6,
+    'ВС': 7
 };
 
 var daysFromNum = {
@@ -30,9 +30,8 @@ function toTimestamp(str) {
     var hours = parseInt(str.slice(2, 5));
     var minutes = parseInt(str.slice(6, 8));
     var day = daysInNum[str.slice(0, 2)];
-    var date = Date.UTC(2016, 7, day, hours, minutes) - region * MILLISECINHOUR;
 
-    return date;
+    return Date.UTC(2016, 7, day, hours, minutes) - region * MILLISECINHOUR;
 }
 
 function makeListForAll(schedule) {
@@ -53,10 +52,8 @@ function checkEnoughTime(start, duration, time) {
 
 function addBankHours(timeList, bankRegion, bankDays) {
     for (var i = 1; i <= bankDays.length; i++) {
-        var start;
-        var end;
-        start = Date.UTC(2016, 7, i, 0, 0) - bankRegion * MILLISECINHOUR;
-        end = Date.UTC(2016, 7, i, 23, 59) - bankRegion * MILLISECINHOUR;
+        var start = Date.UTC(2016, 7, i, 0, 0) - bankRegion * MILLISECINHOUR;
+        var end = Date.UTC(2016, 7, i, 23, 59) - bankRegion * MILLISECINHOUR;
         timeList.push({ 'from': start, 'to': bankDays[i - 1].from });
         timeList.push({ 'from': bankDays[i - 1].to, 'to': end });
     }
@@ -81,7 +78,6 @@ function sortTimeList(timeList) {
 
 function makeBankDays(workingHours) {
     var bankDays = [];
-    var days = Object.keys(daysInEng);
     for (var i = 0; i < days.length; i++) {
         var from = toTimestamp(days[i] + ' ' + workingHours.from);
         var to = toTimestamp(days[i] + ' ' + workingHours.to);
@@ -93,15 +89,15 @@ function makeBankDays(workingHours) {
 
 function chooseIntervals(startTime, duration, timeList) {
     for (var i = 0; i < timeList.length; i++) {
+        if (startTime >= FINISHTIME) {
+            return null;
+        }
         var interval = timeList[i];
         if (checkEnoughTime(startTime, duration, interval.from)) {
             return startTime;
         } else if (startTime < interval.to) {
             startTime = interval.to;
 
-        }
-        if (startTime >= FINISHTIME) {
-            return null;
         }
     }
 
@@ -155,7 +151,6 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
          */
         format: function (template) {
             var finalDate = parseInt(this.timeForDeal) + (bankRegion) * MILLISECINHOUR;
-
             var date = new Date(finalDate);
             var hours = date.getUTCHours().toString();
             var minutes = date.getUTCMinutes().toString();
