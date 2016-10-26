@@ -9,9 +9,9 @@ var MILLISECOND_IN_MINUTE = 60000;
 var MILLISECOND_IN_HOUR = MILLISECOND_IN_MINUTE * 60;
 var ROBBERY_YEAR = 2016;
 var ROBBERY_MONTH = 7;
-var FINISH_TIME;
-var START_TIME;
-var HALF_AN_HOUR = 30;
+var FINISH_AVAILABLE_ROBBERY_TIME = Date.UTC(ROBBERY_YEAR, ROBBERY_MONTH, 3, 23, 59);
+var START_AVAILABLE_ROBBERY_TIME = Date.UTC(ROBBERY_YEAR, ROBBERY_MONTH, 1, 0, 0);
+var TIME_OFFSET = 30;
 //  Август - ближайший к текущей дате месяц, в который первое число - понедельник
 
 var weekDays = ['ПН', 'ВТ', 'СР'];
@@ -90,9 +90,9 @@ function makeBankDays(workingHours) {
     return bankDays;
 }
 
-function chooseIntervals(startTime, duration, timeList) {
+function chooseIntervals(startTime, duration, timeList, bankRegion) {
     for (var i = 0; i < timeList.length; i++) {
-        if (startTime >= FINISH_TIME) {
+        if (startTime >= (FINISH_AVAILABLE_ROBBERY_TIME - bankRegion * MILLISECOND_IN_HOUR)) {
             return null;
         }
 
@@ -127,20 +127,17 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
     var bankDays = makeBankDays(workingHours);
     timeList = addBankClosedHours(timeList, bankRegion, bankDays);
     timeList.sort(sortTime);
-    START_TIME = Date.UTC(ROBBERY_YEAR, ROBBERY_MONTH, 1, 0, 0) -
-        bankRegion * MILLISECOND_IN_HOUR;
-    var startTime = START_TIME;
-    FINISH_TIME = Date.UTC(ROBBERY_YEAR, ROBBERY_MONTH, 3, 23, 59) -
-        bankRegion * MILLISECOND_IN_HOUR;
     // должен быть часовой пояс банка
-    var start = chooseIntervals(startTime, duration, timeList);
+    var start = chooseIntervals(START_AVAILABLE_ROBBERY_TIME - bankRegion * MILLISECOND_IN_HOUR,
+        duration, timeList, bankRegion);
 
     return {
 
         timeForDeal: start,
         timeList: timeList,
         duration: duration,
-        finish: FINISH_TIME,
+        finish: FINISH_AVAILABLE_ROBBERY_TIME,
+        bankRegion: bankRegion,
 
 
         /**
@@ -188,8 +185,8 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
             if (!this.exists()) {
                 return false;
             }
-            var start2 = chooseIntervals((this.timeForDeal + HALF_AN_HOUR * MILLISECOND_IN_MINUTE),
-                this.duration, this.timeList);
+            var start2 = chooseIntervals((this.timeForDeal + TIME_OFFSET * MILLISECOND_IN_MINUTE),
+                this.duration, this.timeList, this.bankRegion);
             if (!start2) {
                 return false;
             }
