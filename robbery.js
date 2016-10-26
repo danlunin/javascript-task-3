@@ -7,9 +7,11 @@
 exports.isStar = true;
 var MILLISECOND_IN_MINUTE = 60000;
 var MILLISECOND_IN_HOUR = MILLISECOND_IN_MINUTE * 60;
-var FINISH_TIME;
 var ROBBERY_YEAR = 2016;
 var ROBBERY_MONTH = 7;
+var FINISH_TIME;
+var START_TIME;
+var HALF_AN_HOUR = 30;
 //  Август - ближайший к текущей дате месяц, в который первое число - понедельник
 
 var weekDays = ['ПН', 'ВТ', 'СР'];
@@ -36,12 +38,12 @@ function convertToTimestamp(str) {
 function makeList(schedule) {
     var timeList = [];
     Object.keys(schedule).forEach(function (man) {
-        for (var i = 0; i < schedule[man].length; i++) {
+        schedule[man].forEach(function (segment) {
             timeList.push({
-                from: convertToTimestamp(schedule[man][i].from),
-                to: convertToTimestamp(schedule[man][i].to)
+                from: convertToTimestamp(segment.from),
+                to: convertToTimestamp(segment.to)
             });
-        }
+        });
     });
 
     return timeList;
@@ -57,10 +59,14 @@ function addBankClosedHours(timeList, bankRegion, bankDays) {
             bankRegion * MILLISECOND_IN_HOUR;
         var end = Date.UTC(ROBBERY_YEAR, ROBBERY_MONTH, i, 23, 59) -
             bankRegion * MILLISECOND_IN_HOUR;
-        timeList.push({ from: start,
-            to: bankDays[i - 1].from });
-        timeList.push({ from: bankDays[i - 1].to,
-            to: end });
+        timeList.push({
+            from: start,
+            to: bankDays[i - 1].from
+        });
+        timeList.push({
+            from: bankDays[i - 1].to,
+            to: end
+        });
     }
 
     return timeList;
@@ -121,8 +127,9 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
     var bankDays = makeBankDays(workingHours);
     timeList = addBankClosedHours(timeList, bankRegion, bankDays);
     timeList.sort(sortTime);
-    var startTime = Date.UTC(ROBBERY_YEAR, ROBBERY_MONTH, 1, 0, 0) -
+    START_TIME = Date.UTC(ROBBERY_YEAR, ROBBERY_MONTH, 1, 0, 0) -
         bankRegion * MILLISECOND_IN_HOUR;
+    var startTime = START_TIME;
     FINISH_TIME = Date.UTC(ROBBERY_YEAR, ROBBERY_MONTH, 3, 23, 59) -
         bankRegion * MILLISECOND_IN_HOUR;
     // должен быть часовой пояс банка
@@ -155,10 +162,10 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
             if (this.timeForDeal === null) {
                 return '';
             }
-            var finalDate = parseInt(this.timeForDeal, 10) + (bankRegion) * MILLISECOND_IN_HOUR;
-            var date = new Date(finalDate);
-            var hours = date.getUTCHours().toString();
-            var minutes = date.getUTCMinutes().toString();
+            var dateOfRobbery = new Date(parseInt(this.timeForDeal, 10) +
+                (bankRegion) * MILLISECOND_IN_HOUR);
+            var hours = dateOfRobbery.getUTCHours().toString();
+            var minutes = dateOfRobbery.getUTCMinutes().toString();
             if (hours.length !== 2) {
                 hours = '0' + hours;
             }
@@ -169,7 +176,7 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
             return template
                 .replace('%HH', hours)
                 .replace('%MM', minutes)
-                .replace('%DD', weekDays[date.getUTCDate() - 1]);
+                .replace('%DD', weekDays[dateOfRobbery.getUTCDate() - 1]);
         },
 
         /**
@@ -181,9 +188,7 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
             if (!this.exists()) {
                 return false;
             }
-            this.finish = Date.UTC(ROBBERY_YEAR, ROBBERY_MONTH, 3, 23, 59) -
-                bankRegion * MILLISECOND_IN_HOUR;
-            var start2 = chooseIntervals((this.timeForDeal + 30 * MILLISECOND_IN_MINUTE),
+            var start2 = chooseIntervals((this.timeForDeal + HALF_AN_HOUR * MILLISECOND_IN_MINUTE),
                 this.duration, this.timeList);
             if (!start2) {
                 return false;
