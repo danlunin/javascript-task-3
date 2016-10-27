@@ -62,8 +62,7 @@ function addBankClosedHours(timeList, bankRegion, bankDays) {
         timeList.push({
             from: start,
             to: bankDays[i - 1].from
-        });
-        timeList.push({
+        }, {
             from: bankDays[i - 1].to,
             to: end
         });
@@ -73,6 +72,10 @@ function addBankClosedHours(timeList, bankRegion, bankDays) {
 }
 
 function sortTime(firstTime, secondTime) {
+    if (firstTime.from === secondTime.from) {
+        return 0;
+    }
+
     return firstTime.from > secondTime.from ? 1 : -1;
 }
 
@@ -185,12 +188,13 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
             if (!this.exists()) {
                 return false;
             }
-            var start2 = chooseIntervals((this.timeForDeal + TIME_OFFSET * MILLISECOND_IN_MINUTE),
+            var lateStart = chooseIntervals((this.timeForDeal +
+                TIME_OFFSET * MILLISECOND_IN_MINUTE),
                 this.duration, this.timeList, this.bankRegion);
-            if (!start2) {
+            if (!lateStart) {
                 return false;
             }
-            this.timeForDeal = start2;
+            this.timeForDeal = lateStart;
 
             return true;
         }
